@@ -2,6 +2,13 @@
 
 :)
 
+Everything is working, UP and Running
+
+## ENV Variables Required
+- PORT
+- MONGO_URI
+- OPENAI_API_KEY
+- JWT_SECRET
 
 ### Tasks
 - POST: Login Endpoint
