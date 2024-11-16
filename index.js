@@ -14,15 +14,19 @@ connectDB();
 
 const app = express();
 
-app.use(express.json());
 app.use(
   cors({
-    origin: "*",
+    origin: ["http://127.0.0.1:5173", "http://localhost:5000"], // Frontend URL
     credentials: true,
-    allowedHeaders: "*",
+    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ["GET", "POST", "PUT", "DELETE"],
   })
 );
+app.options('*', cors()); // Handle preflight requests
+
+app.use(express.json());
 app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/users', userRoutes);
 app.use('/api/profile', profileRoutes);
