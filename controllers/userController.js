@@ -87,8 +87,25 @@ export const logout = (req, res) => {
 
 export const status = async (req, res) => {
   const token = req.cookies.token;
-  if (!token) return res.send(false);
-  const loggedIn = jwt.verify(token, process.env.JWT_SECRET);
-  if (!loggedIn) return res.send(false);
-  return res.send(true);
-}
+  if (!token) return res.json({ authenticated: false });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await User.findById(decoded._id).select('_id name email');
+    if (!user) {
+      return res.json({ authenticated: false });
+    }
+
+    return res.json({
+      authenticated: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+      },
+    });
+  } catch (err) {
+    return res.json({ authenticated: false });
+  }
+};
