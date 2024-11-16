@@ -1,47 +1,50 @@
-const User = require("../models/User");
-const { Configuration, OpenAIApi } = require("openai");
+import User from '../models/User.js';  // Adjust path as necessary
+import OpenAIApi from 'openai';  // Single import
+import dotenv from 'dotenv';
 
-const configuration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
+dotenv.config();
+
+const apiKey = process.env.OPENAI_API_KEY;
+const openai = new OpenAIApi.OpenAI({
+  apiKey: apiKey,
 });
-const openai = new OpenAIApi(configuration);
+
+
 
 // Signup Controller
-exports.signup = async (req, res) => {
+export const signup = async (req, res) => {
   try {
     const { name, email, password } = req.body;
     const user = new User({ name, email, password });
     await user.save();
-    res
-      .status(201)
-      .json({ message: "User registered successfully", userId: user._id });
+    res.status(201).json({ message: 'User registered successfully', userId: user._id });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
 // Set Preferences Controller
-exports.setPreferences = async (req, res) => {
+export const setPreferences = async (req, res) => {
   try {
     const { userId, preferences } = req.body;
     const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
     user.preferences = preferences;
     user.profileCreated = true;
     await user.save();
-    res.status(200).json({ message: "Preferences saved successfully" });
+    res.status(200).json({ message: 'Preferences saved successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
 // Get Matches Controller
-exports.getMatches = async (req, res) => {
+export const getMatches = async (req, res) => {
   try {
     const userId = req.params.userId;
     const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
     const allUsers = await User.find({
       _id: { $ne: userId },
@@ -49,7 +52,7 @@ exports.getMatches = async (req, res) => {
     });
 
     const response = await openai.createCompletion({
-      model: "text-davinci-003",
+      model: 'text-davinci-003',
       prompt: `Match the user with these preferences: ${JSON.stringify(
         user.preferences
       )} with these users: ${JSON.stringify(

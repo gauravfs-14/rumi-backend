@@ -1,13 +1,10 @@
-const express = require("express");
-const {
-  signup,
-  setPreferences,
-  getMatches,
-} = require("../controllers/userController");
+import express from 'express';
+import { signup, setPreferences, getMatches } from '../controllers/userController.js';
+
 const router = express.Router();
 
-router.post("/signup", signup);
-router.post("/preferences", setPreferences);
-router.get("/matches/:userId", getMatches);
+router.post('/signup', signup);
+router.post('/preferences', setPreferences);
+router.get('/matches/:userId', getMatches);
 
-module.exports = router;
+export default router;

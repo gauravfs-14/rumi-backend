@@ -22,5 +22,6 @@
   },
   "devDependencies": {
     "mongoose": "^8.8.1"
-  }
+  },
+  "type": "module"
 }
