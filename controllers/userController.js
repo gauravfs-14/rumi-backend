@@ -1,69 +1,81 @@
 import User from '../models/User.js';  // Adjust path as necessary
-import OpenAIApi from 'openai';  // Single import
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const apiKey = process.env.OPENAI_API_KEY;
-const openai = new OpenAIApi.OpenAI({
-  apiKey: apiKey,
-});
-
-
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 // Signup Controller
 export const signup = async (req, res) => {
+  const { name, email, password, confirmPassword } = req.body;
   try {
-    const { name, email, password } = req.body;
-    const user = new User({ name, email, password });
-    await user.save();
-    res.status(201).json({ message: 'User registered successfully', userId: user._id });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+    //validation
+    if (!name || !email || !password || !confirmPassword)
+      return res.status(400).json({ message: "Invalid credentials" });
 
-// Set Preferences Controller
-export const setPreferences = async (req, res) => {
-  try {
-    const { userId, preferences } = req.body;
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (password !== confirmPassword)
+      return res.status(400).json({ message: "Passwords do not match" });
 
-    user.preferences = preferences;
-    user.profileCreated = true;
-    await user.save();
-    res.status(200).json({ message: 'Preferences saved successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+    //hash the password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = bcrypt.hashSync(password, salt);
 
-// Get Matches Controller
-export const getMatches = async (req, res) => {
-  try {
-    const userId = req.params.userId;
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    const allUsers = await User.find({
-      _id: { $ne: userId },
-      profileCreated: true,
+    //create a new user
+    const savedUser = await User.create({
+      name: name,
+      email: email,
+      password: hashedPassword,
     });
 
-    const response = await openai.createCompletion({
-      model: 'text-davinci-003',
-      prompt: `Match the user with these preferences: ${JSON.stringify(
-        user.preferences
-      )} with these users: ${JSON.stringify(
-        allUsers.map((u) => u.preferences)
-      )}. Provide the best matches.`,
-      max_tokens: 200,
+    return res.json({
+      user: {
+        name: savedUser.name,
+        email: savedUser.email,
+      },
     });
-
-    const matches = JSON.parse(response.data.choices[0].text.trim());
-    res.status(200).json({ matches });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
   }
 };
+
+export const login = async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    //validation
+    if (!email || !password)
+      return res.status(400).json({ message: "Invalid credentials" });
+
+    const existingUser = await User.findOne({ email: email });
+
+    const passwordMatch = await bcrypt.compare(password, existingUser.password);
+
+    if (!passwordMatch)
+      return res.status(400).json({ message: "Invalid credentials" });
+
+    //generate jwt token
+    const token = jwt.sign({ _id: existingUser._id }, process.env.JWT_SECRET);
+
+    return res
+      .cookie("token", token, {
+        httpOnly: true,
+      })
+      .send();
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+}
+
+export const logout = (req, res) => {
+  //reset cookies
+  return res
+    .cookie("token", "", {
+      expires: new Date(0),
+      httpOnly: true,
+    })
+    .send();
+}
+
+export const status = async (req, res) => {
+  const token = req.cookies.token;
+  if (!token) return res.send(false);
+  const loggedIn = jwt.verify(token, process.env.JWT_SECRET);
+  if (!loggedIn) return res.send(false);
+  return res.send(true);
+}
