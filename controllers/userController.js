@@ -6,30 +6,43 @@ import jwt from 'jsonwebtoken';
 export const signup = async (req, res) => {
   const { name, email, password, confirmPassword } = req.body;
   try {
-    //validation
-    if (!name || !email || !password || !confirmPassword)
-      return res.status(400).json({ message: "Invalid credentials" });
+    // Validation
+    if (!name || !email || !password || !confirmPassword) {
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
 
-    if (password !== confirmPassword)
-      return res.status(400).json({ message: "Passwords do not match" });
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: 'Passwords do not match' });
+    }
 
-    //hash the password
+    // Hash the password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = bcrypt.hashSync(password, salt);
 
-    //create a new user
+    // Create a new user
     const savedUser = await User.create({
       name: name,
       email: email,
       password: hashedPassword,
     });
 
-    return res.json({
-      user: {
-        name: savedUser.name,
-        email: savedUser.email,
-      },
-    });
+    // Generate JWT token
+    const token = jwt.sign({ _id: savedUser._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+    // Set cookie and respond
+    return res
+      .cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production', // Use secure cookie in production
+        sameSite: 'strict',
+      })
+      .json({
+        user: {
+          name: savedUser.name,
+          email: savedUser.email,
+        },
+        message: 'Signup successful, logged in automatically.',
+      });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
