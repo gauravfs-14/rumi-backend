@@ -6,7 +6,6 @@ import jwt from 'jsonwebtoken';
 export const signup = async (req, res) => {
   const { name, email, password, confirmPassword } = req.body;
   try {
-    // Validation
     if (!name || !email || !password || !confirmPassword) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
@@ -15,26 +14,22 @@ export const signup = async (req, res) => {
       return res.status(400).json({ message: 'Passwords do not match' });
     }
 
-    // Hash the password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = bcrypt.hashSync(password, salt);
 
-    // Create a new user
     const savedUser = await User.create({
       name: name,
       email: email,
       password: hashedPassword,
     });
 
-    // Generate JWT token
     const token = jwt.sign({ _id: savedUser._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-    // Set cookie and respond
     return res
       .cookie('token', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production', // Use secure cookie in production
-        sameSite: 'strict',
+        secure: true,  // Only allow cookies over HTTPS
+        sameSite: 'None', // Allow cross-site usage
       })
       .json({
         user: {
@@ -48,42 +43,49 @@ export const signup = async (req, res) => {
   }
 };
 
+
 export const login = async (req, res) => {
   const { email, password } = req.body;
   try {
-    //validation
-    if (!email || !password)
+    if (!email || !password) {
       return res.status(400).json({ message: "Invalid credentials" });
+    }
 
     const existingUser = await User.findOne({ email: email });
+    if (!existingUser) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
 
     const passwordMatch = await bcrypt.compare(password, existingUser.password);
-
-    if (!passwordMatch)
+    if (!passwordMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
+    }
 
-    //generate jwt token
     const token = jwt.sign({ _id: existingUser._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
     return res
-      .cookie("token", token, {
+      .cookie('token', token, {
         httpOnly: true,
+        secure: true, // Only allow cookies over HTTPS
+        sameSite: 'None', // Allow cross-site usage
       })
-      .send();
+      .json({ message: 'Login successful' });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
-}
+};
 
 export const logout = (req, res) => {
-  //reset cookies
   return res
-    .cookie("token", "", {
+    .cookie('token', '', {
       expires: new Date(0),
       httpOnly: true,
+      secure: true,  // Same as above to ensure compatibility
+      sameSite: 'None', // Allow cross-site usage
     })
-    .send();
-}
+    .json({ message: 'Logout successful' });
+};
+
 
 export const status = async (req, res) => {
   const token = req.cookies.token;
