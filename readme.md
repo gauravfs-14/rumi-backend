@@ -2,6 +2,7 @@
 
 :)
 
+Rumi is a roommate finder we developed during the 7-hour Hackacat Nano hackathon organized by ACM AI @ TXST.
 
 ### Tasks
 - POST: Login Endpoint
